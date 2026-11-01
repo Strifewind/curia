@@ -52,7 +52,20 @@ void setStatus(String payload) {
 #endif
 
   if (!services.isNull() && services.size() > 0) {
-    JsonObject service = services[0];
+    JsonObject service;
+    for (JsonObject candidate : services) {
+      const char *candidateState = candidate["state"] | "unknown";
+      JsonObject candidateStorage = candidate["storage"].as<JsonObject>();
+      if (strcmp(candidateState, "healthy") != 0 || (candidateStorage["alert?"] | false)) {
+        service = candidate;
+        break;
+      }
+    }
+
+    if (service.isNull()) {
+      service = services[0];
+    }
+
     const char *name = service["name"] | "Service";
     const char *state = service["state"] | "unknown";
     int latency = service["latency_ms"] | -1;

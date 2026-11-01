@@ -46,7 +46,11 @@ defmodule CuriaWeb.DashboardLive do
           <p :if={@snapshot.cluster.error} class="muted"><%= @snapshot.cluster.error %></p>
           <div :if={@snapshot.cluster.nodes != []} class="node-list">
             <div :for={node <- @snapshot.cluster.nodes} class="node-row">
-              <span class={"node-dot node-dot--#{if node.ready, do: "healthy", else: "down"}"}></span>
+              <span
+                class={"node-dot node-dot--#{if node.ready, do: "healthy", else: "down"}"}
+                role="img"
+                aria-label={"#{node.name}: #{if node.ready, do: "ready", else: "not ready"}"}
+              ></span>
               <span class="node-name"><%= node.name %></span>
               <span class="node-capacity">
                 CPU <%= Map.get(node.allocatable, "cpu", "—") %>
@@ -80,6 +84,7 @@ defmodule CuriaWeb.DashboardLive do
               </strong>
             </div>
             <div class="storage-track" role="progressbar"
+              aria-label={"#{service.name} storage usage"}
               aria-valuenow={service.storage.percent} aria-valuemin="0" aria-valuemax="100">
               <span class={if service.storage.alert?, do: "storage-fill storage-fill--warning", else: "storage-fill"}
                 style={"width: #{min(service.storage.percent, 100)}%"}></span>

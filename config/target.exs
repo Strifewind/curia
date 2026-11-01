@@ -9,7 +9,9 @@ wifi_config =
       {"wlan0",
        %{
          type: VintageNetWiFi,
-         vintage_net_wifi: %{networks: [%{ssid: wifi_ssid, psk: wifi_psk}]},
+         vintage_net_wifi: %{
+           networks: [%{ssid: wifi_ssid, psk: wifi_psk, key_mgmt: :wpa_psk}]
+         },
          ipv4: %{method: :dhcp}
        }}
     ]
@@ -69,6 +71,17 @@ config :curia, CuriaWeb.Endpoint,
 config :nerves_ssh,
   authorized_keys: authorized_keys
 
+web_host = System.get_env("CURIA_HOST", "curia.local")
+
+allowed_origins =
+  System.get_env("CURIA_ALLOWED_ORIGINS", "//#{web_host}:4000")
+  |> String.split(",", trim: true)
+  |> Enum.map(&String.trim/1)
+
 config :vintage_net,
   regulatory_domain: System.get_env("WIFI_REGULATORY_DOMAIN", "US"),
   config: network_config
+
+config :curia, CuriaWeb.Endpoint,
+  url: [host: web_host, port: 4000],
+  check_origin: allowed_origins

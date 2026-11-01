@@ -31,6 +31,8 @@ export CURIA_K8S_API_URL='https://kubernetes.example:6443'
 export CURIA_K8S_BEARER_TOKEN='...'
 export CURIA_ROUTER_URL='http://192.0.2.1/health'
 export CURIA_NAS_URL='http://192.0.2.2:8080/health'
+export CURIA_HOST='192.0.2.10'
+export CURIA_ALLOWED_ORIGINS='//192.0.2.10:4000,//curia.local:4000'
 mix deps.get
 mix firmware
 ```
@@ -70,6 +72,8 @@ packaging; no asset compiler runs on the target.
 | `CURIA_K8S_API_URL` | Kubernetes API base URL |
 | `CURIA_K8S_BEARER_TOKEN` | Optional Kubernetes bearer token |
 | `CURIA_ROUTER_URL`, `CURIA_NAS_URL` | Optional HTTP health-check URLs |
+| `CURIA_HOST` | Dashboard host advertised by Phoenix; defaults to `curia.local` |
+| `CURIA_ALLOWED_ORIGINS` | Comma-separated Phoenix origins allowed for LiveView; defaults to `//<CURIA_HOST>:4000` |
 | `CURIA_POLL_INTERVAL_MS` | Poll period; defaults to `15000` |
 | `CURIA_STORAGE_ALERT_PERCENT` | NAS storage warning threshold; defaults to `85` |
 | `CURIA_MCU_SOCKET` | Router socket; defaults to `/var/run/arduino-router.sock` |

@@ -83,6 +83,7 @@ defmodule Curia.Poller do
        kubernetes_bearer_token: Application.get_env(:curia, :kubernetes_bearer_token),
        service_checks: Application.get_env(:curia, :service_checks, []),
        storage_alert_percent: Application.get_env(:curia, :storage_alert_percent, 85),
+       task_ref: nil,
        snapshot: initial_snapshot()
      }}
   end
@@ -91,12 +92,30 @@ defmodule Curia.Poller do
   def handle_call(:snapshot, _from, state), do: {:reply, state.snapshot, state}
 
   @impl true
-  def handle_info(:poll, state) do
-    snapshot = collect_snapshot(state)
+  def handle_info(:poll, %{task_ref: nil} = state) do
+    task =
+      Task.Supervisor.async_nolink(Curia.PollerTaskSupervisor, fn ->
+        collect_snapshot(state)
+      end)
+
+    {:noreply, %{state | task_ref: task.ref}}
+  end
+
+  def handle_info(:poll, state), do: {:noreply, state}
+
+  def handle_info({task_ref, snapshot}, %{task_ref: task_ref} = state) do
+    Process.demonitor(task_ref, [:flush])
     Phoenix.PubSub.broadcast(Curia.PubSub, @topic, {:health_snapshot, snapshot})
     Process.send_after(self(), :poll, state.interval_ms)
 
-    {:noreply, %{state | snapshot: snapshot}}
+    {:noreply, %{state | snapshot: snapshot, task_ref: nil}}
+  end
+
+  def handle_info({:DOWN, task_ref, :process, _pid, reason}, %{task_ref: task_ref} = state) do
+    Logger.warning("Health snapshot collection failed: #{inspect(reason)}")
+    Process.send_after(self(), :poll, state.interval_ms)
+
+    {:noreply, %{state | task_ref: nil}}
   end
 
   defp collect_snapshot(state) do

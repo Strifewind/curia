@@ -5,6 +5,7 @@ defmodule Curia.Application do
   def start(_type, _args) do
     children = [
       {Phoenix.PubSub, name: Curia.PubSub},
+      {Task.Supervisor, name: Curia.PollerTaskSupervisor},
       Curia.Poller,
       Curia.McuBridge,
       CuriaWeb.Endpoint

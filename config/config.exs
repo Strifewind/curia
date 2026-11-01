@@ -19,8 +19,8 @@ config :curia, CuriaWeb.Endpoint,
 
 config :phoenix, :json_library, Jason
 
+import_config "#{config_env()}.exs"
+
 if Mix.target() != :host do
   import_config "target.exs"
 end
-
-import_config "#{config_env()}.exs"
