@@ -1,6 +1,9 @@
 /_build
 /cover
 /deps
+/assets/node_modules
+/priv/static/assets/app.js
+/priv/static/assets/app.js.map
 /doc
 /.fetch
 erl_crash.dump
