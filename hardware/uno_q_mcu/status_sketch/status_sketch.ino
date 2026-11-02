@@ -37,35 +37,21 @@ void setStatus(String payload) {
   snprintf(line, sizeof(line), "Nodes ready: %d/%d", ready, total);
   display.drawStr(0, 38, line);
 
-  JsonArray services = status["services"].as<JsonArray>();
-  for (JsonObject service : services) {
-    const char *serviceState = service["state"] | "unknown";
-    JsonObject storage = service["storage"].as<JsonObject>();
+  JsonObject service = status["service"].as<JsonObject>();
+  const char *serviceState = service["state"] | "unknown";
+  int storagePercent = service["storage_percent"] | -1;
+  bool storageAlert = service["storage_alert"] | false;
 
-    if (strcmp(serviceState, "healthy") != 0 || (storage["alert?"] | false)) {
-      alert = true;
-    }
+  if (!service.isNull() &&
+      (strcmp(serviceState, "healthy") != 0 || storageAlert)) {
+    alert = true;
   }
 
 #if defined(CURIA_STATUS_LED_PIN)
   digitalWrite(CURIA_STATUS_LED_PIN, alert ? HIGH : LOW);
 #endif
 
-  if (!services.isNull() && services.size() > 0) {
-    JsonObject service;
-    for (JsonObject candidate : services) {
-      const char *candidateState = candidate["state"] | "unknown";
-      JsonObject candidateStorage = candidate["storage"].as<JsonObject>();
-      if (strcmp(candidateState, "healthy") != 0 || (candidateStorage["alert?"] | false)) {
-        service = candidate;
-        break;
-      }
-    }
-
-    if (service.isNull()) {
-      service = services[0];
-    }
-
+  if (!service.isNull()) {
     const char *name = service["name"] | "Service";
     const char *state = service["state"] | "unknown";
     int latency = service["latency_ms"] | -1;
@@ -75,15 +61,10 @@ void setStatus(String payload) {
     display.drawStr(0, 50, "No service checks");
   }
 
-  for (JsonObject service : services) {
-    JsonObject storage = service["storage"].as<JsonObject>();
-    if (!storage.isNull()) {
-      int usedPercent = storage["percent"] | 0;
-      bool alert = storage["alert?"] | false;
-      snprintf(line, sizeof(line), "Storage: %d%% %s", usedPercent, alert ? "ALERT" : "OK");
-      display.drawStr(0, 60, line);
-      break;
-    }
+  if (!service.isNull() && storagePercent >= 0) {
+    snprintf(line, sizeof(line), "Storage: %d%% %s", storagePercent,
+             storageAlert ? "ALERT" : "OK");
+    display.drawStr(0, 60, line);
   }
 
   display.sendBuffer();

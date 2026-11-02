@@ -1,8 +1,6 @@
 import Config
 
-target? = Application.get_env(:curia, :target, false)
-
-if not target? do
+if config_target() == :host do
   service_checks =
     [
       {"Router", System.get_env("CURIA_ROUTER_URL")},

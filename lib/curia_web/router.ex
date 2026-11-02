@@ -11,9 +11,11 @@ defmodule CuriaWeb.Router do
 
   scope "/", CuriaWeb do
     pipe_through(:browser)
-    live("/", DashboardLive, :index,
+
+    live_session :dashboard,
       layout: false,
-      root_layout: {CuriaWeb.Layouts, :app}
-    )
+      root_layout: {CuriaWeb.Layouts, :app} do
+      live("/", DashboardLive, :index)
+    end
   end
 end

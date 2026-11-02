@@ -90,9 +90,9 @@ object containing integer `used_bytes` and `total_bytes` fields.
 
 The UNO Q system starts `arduino-router` and exposes its MessagePack-RPC
 Unix-domain socket at `/var/run/arduino-router.sock`. Curia sends the latest
-snapshot as a JSON string argument to the configured MCU method. The MCU sketch
-must register that method. Application code must not open `/dev/ttyHS1`
-directly: the router owns that UART.
+bounded MCU-specific summary as a JSON string argument to the configured MCU
+method. The MCU sketch must register that method. Application code must not
+open `/dev/ttyHS1` directly: the router owns that UART.
 
 `unoq-mcu` is the system's MCU flashing utility, not the RPC daemon. The
 supported handoff is to build a compatible MCU sketch and use the system's
