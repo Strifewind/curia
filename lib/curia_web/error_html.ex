@@ -1,0 +1,7 @@
+defmodule CuriaWeb.ErrorHTML do
+  use Phoenix.Component
+
+  def render("404.html", assigns), do: ~H"<h1>Page not found</h1>"
+  def render("500.html", assigns), do: ~H"<h1>Internal server error</h1>"
+  def render(_template, assigns), do: ~H"<h1>Something went wrong</h1>"
+end
