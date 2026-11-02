@@ -45,9 +45,35 @@ defmodule Curia.McuBridgeTest do
     request = McuBridge.encode_request("set_status", 1, snapshot)
     summary = McuBridge.mcu_summary(snapshot)
 
+    assert is_binary(request)
     assert byte_size(request) <= 256
     assert byte_size(summary.service.name) <= 16
     assert summary.cluster.ready == 999_999
     assert summary.service.latency_ms == 999_999
+  end
+
+  test "receives a MessagePack string split inside a multibyte character" do
+    response = Msgpax.pack!([1, 1, nil, "€"], iodata: false)
+    prefix_size = byte_size(response) - 1
+    <<prefix::binary-size(prefix_size), suffix::binary>> = response
+    {:ok, listener} = :gen_tcp.listen(0, [:binary, active: false, reuseaddr: true])
+    {:ok, port} = :inet.port(listener)
+
+    server =
+      Task.async(fn ->
+        {:ok, socket} = :gen_tcp.accept(listener)
+        :ok = :gen_tcp.send(socket, prefix)
+        Process.sleep(20)
+        :ok = :gen_tcp.send(socket, suffix)
+        :gen_tcp.close(socket)
+      end)
+
+    {:ok, client} = :gen_tcp.connect({127, 0, 0, 1}, port, [:binary, active: false])
+
+    assert {:ok, [1, 1, nil, "€"]} = McuBridge.receive_response(client)
+
+    :gen_tcp.close(client)
+    :gen_tcp.close(listener)
+    assert :ok = Task.await(server)
   end
 end

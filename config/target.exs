@@ -22,7 +22,7 @@ wifi_config =
 network_config =
   wifi_config ++
     [
-      {"usb0", %{type: VintageNetEthernet, ipv4: %{method: :dhcp}}}
+      {"usb0", %{type: VintageNetDirect}}
     ]
 
 authorized_keys =

@@ -5,6 +5,7 @@ defmodule Curia.McuBridge do
   @topic "curia:health"
   @response_timeout 2_000
   @rpc_buffer_size 256
+  @max_rpc_response_size 4_096
   @max_service_name_length 16
 
   def start_link(opts \\ []) do
@@ -26,7 +27,7 @@ defmodule Curia.McuBridge do
   @doc false
   def encode_request(method, request_id, snapshot) do
     payload = snapshot |> mcu_summary() |> Jason.encode!()
-    Msgpax.pack!([0, request_id, method, [payload]])
+    Msgpax.pack!([0, request_id, method, [payload]], iodata: false)
   end
 
   @doc false
@@ -75,10 +76,11 @@ defmodule Curia.McuBridge do
 
   defp rpc_call(socket, method, request_id, snapshot) do
     request = encode_request(method, request_id, snapshot)
+    deadline = System.monotonic_time(:millisecond) + @response_timeout
 
     with true <- byte_size(request) <= @rpc_buffer_size || {:error, :request_too_large},
          :ok <- :gen_tcp.send(socket, request),
-         {:ok, [1, ^request_id, nil, _result]} <- receive_response(socket, <<>>) do
+         {:ok, [1, ^request_id, nil, _result]} <- receive_response(socket, <<>>, deadline) do
       :ok
     else
       {:ok, [1, ^request_id, error, _result]} -> {:error, {:rpc_error, error}}
@@ -140,19 +142,55 @@ defmodule Curia.McuBridge do
 
   defp bounded_service_name(_name), do: "Service"
 
-  defp receive_response(socket, buffer) do
-    case Msgpax.unpack(buffer) do
-      {:ok, response} ->
-        {:ok, response}
+  @doc false
+  def receive_response(socket) do
+    receive_response(socket, <<>>, System.monotonic_time(:millisecond) + @response_timeout)
+  end
 
-      {:error, %Msgpax.UnpackError{reason: :incomplete}} ->
-        case :gen_tcp.recv(socket, 0, @response_timeout) do
-          {:ok, data} -> receive_response(socket, buffer <> data)
-          {:error, reason} -> {:error, reason}
+  defp receive_response(socket, buffer, deadline) do
+    if byte_size(buffer) > @max_rpc_response_size do
+      {:error, :response_too_large}
+    else
+      case Msgpax.unpack(buffer) do
+        {:ok, response} ->
+          {:ok, response}
+
+        {:error, %Msgpax.UnpackError{reason: :incomplete}} ->
+          receive_more(socket, buffer, deadline)
+
+        {:error, %Msgpax.UnpackError{reason: {:invalid_format, _byte}}} ->
+          receive_more(socket, buffer, deadline)
+
+        {:error, error} ->
+          {:error, error}
+      end
+    end
+  end
+
+  defp receive_more(socket, buffer, deadline) do
+    remaining = deadline - System.monotonic_time(:millisecond)
+
+    cond do
+      remaining <= 0 ->
+        {:error, :timeout}
+
+      byte_size(buffer) >= @max_rpc_response_size ->
+        {:error, :response_too_large}
+
+      true ->
+        case :gen_tcp.recv(socket, 0, remaining) do
+          {:ok, data} ->
+            next_buffer = buffer <> data
+
+            if byte_size(next_buffer) <= @max_rpc_response_size do
+              receive_response(socket, next_buffer, deadline)
+            else
+              {:error, :response_too_large}
+            end
+
+          {:error, reason} ->
+            {:error, reason}
         end
-
-      {:error, error} ->
-        {:error, error}
     end
   end
 end
