@@ -1,5 +1,7 @@
 import Config
 
+{:ok, _} = Application.ensure_all_started(:nerves_bootstrap)
+
 config :curia,
   target: false,
   poll_interval_ms: 15_000,

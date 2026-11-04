@@ -12,6 +12,18 @@ Phoenix LiveView dashboard, and forwards it to the STM32 through
 - Node.js and npm for the host-side LiveView JavaScript bundle
 - The Nerves UNO Q system's first-install requirements for EDL flashing
 
+Install the Mix build tooling using the same Erlang/Elixir environment that
+will build the firmware:
+
+```sh
+mix local.hex --force
+mix local.rebar --force
+mix archive.install hex nerves_bootstrap "~> 1.10" --force
+```
+
+`config/config.exs` starts Nerves bootstrap before dependencies are compiled.
+Installing the archive alone does not initialize its Mix integration.
+
 Install the JavaScript dependencies once:
 
 ```sh
