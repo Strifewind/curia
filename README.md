@@ -128,3 +128,49 @@ UART implementation.
 The application has no database or persistent metrics store. If the network
 or dashboard fails, the MCU firmware remains responsible for its last-known
 physical indication and its own fail-safe behavior.
+
+## Networking-only recovery
+
+If the board repeatedly disconnects and SSH is unavailable, an opt-in recovery
+build can isolate the application from the Nerves system and power supply.
+It starts Nerves networking and SSH without Phoenix, the pollers, or the MCU
+bridge. It does not change the separate STM32 firmware.
+
+Keep the same OTP-29-compatible Elixir, bootstrap archive, `fwup`, and
+`MIX_REBAR3` configuration used for the successful normal build. Set a public
+key that you can log in with:
+
+```sh
+export MIX_TARGET=uno_q
+export MIX_ENV=prod
+export CURIA_RECOVERY=1
+export NERVES_SSH_AUTHORIZED_KEYS="$(cat ~/.ssh/curia_ed25519.pub)"
+mix clean
+mix deps.get
+mix firmware
+```
+
+With the same recovery environment still set, use `mix firmware.qdl` to
+provision the board over EDL again. This erases eMMC data. After successful
+flashing, power off, remove the EDL jumper, and reconnect normally.
+
+On the native host connected to the board, try
+`ssh -i ~/.ssh/curia_ed25519 curia-recovery.local`. This name requires working
+mDNS on the host. Otherwise obtain the board's address from the USB DHCP
+exchange or, if Wi-Fi was configured, the router's DHCP leases. There is no
+web dashboard in recovery mode. In IEx, capture:
+
+```elixir
+System.cmd("cat", ["/proc/uptime"])
+Application.started_applications() |> Enum.map(&elem(&1, 0))
+RingLogger.next()
+```
+
+Check uptime again after a minute. Increasing uptime and a stable USB
+interface indicate that the minimal firmware is staying up. Continued cycling
+does not prove a power fault: a Nerves-system or boot failure is still possible.
+
+To return to normal firmware, unset `CURIA_RECOVERY`, then run `mix clean` and
+`mix firmware`. Cleaning when switching modes ensures the application
+dependency list is regenerated. Upload over the working recovery connection
+using `mix upload DEVICE_IP`.
