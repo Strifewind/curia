@@ -23,24 +23,27 @@ defmodule Curia.MixProject do
   end
 
   def application do
-    options = [
+    if System.get_env("CURIA_RECOVERY") == "1" and Mix.target() != :uno_q do
+      Mix.raise("CURIA_RECOVERY=1 requires MIX_TARGET=uno_q")
+    end
+
+    [
       mod: {Curia.Application, []},
       extra_applications: [:logger, :runtime_tools]
     ]
-
-    if System.get_env("CURIA_RECOVERY") == "1" do
-      if Mix.target() != :uno_q do
-        Mix.raise("CURIA_RECOVERY=1 requires MIX_TARGET=uno_q")
-      end
-
-      Keyword.put(options, :applications, [:logger, :runtime_tools, :nerves_pack, :shoehorn])
-    else
-      options
-    end
   end
 
   defp deps do
-    application_deps() ++ target_deps(Mix.target())
+    application_deps =
+      if System.get_env("CURIA_RECOVERY") == "1" do
+        Enum.map(application_deps(), fn {name, version} ->
+          {name, version, runtime: false}
+        end)
+      else
+        application_deps()
+      end
+
+    application_deps ++ target_deps(Mix.target())
   end
 
   defp application_deps do
