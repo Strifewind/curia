@@ -134,7 +134,9 @@ physical indication and its own fail-safe behavior.
 If the board repeatedly disconnects and SSH is unavailable, an opt-in recovery
 build can isolate the application from the Nerves system and power supply.
 It starts Nerves networking and SSH without Phoenix, the pollers, or the MCU
-bridge. It does not change the separate STM32 firmware.
+bridge. Recovery builds compile only the boot module in `lib/curia/boot`,
+so excluded web modules do not require Phoenix during compilation. This mode
+does not change the separate STM32 firmware.
 
 Keep the same OTP-29-compatible Elixir, bootstrap archive, `fwup`, and
 `MIX_REBAR3` configuration used for the successful normal build. Set a public

@@ -7,6 +7,8 @@ defmodule Curia.MixProject do
       version: "0.1.0",
       elixir: "~> 1.17",
       archives: [nerves_bootstrap: "~> 1.10"],
+      elixirc_paths:
+        if(System.get_env("CURIA_RECOVERY") == "1", do: ["lib/curia/boot"], else: ["lib"]),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
