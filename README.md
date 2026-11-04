@@ -8,7 +8,8 @@ Phoenix LiveView dashboard, and forwards it to the STM32 through
 
 ## Host requirements
 
-- Elixir/OTP and the Nerves firmware tools (including `fwup`)
+- Elixir 1.17 or newer, an OTP version matching the selected Nerves system,
+  and the Nerves firmware tools (including `fwup`)
 - Node.js and npm for the host-side LiveView JavaScript bundle
 - The Nerves UNO Q system's first-install requirements for EDL flashing
 
@@ -23,6 +24,10 @@ mix archive.install hex nerves_bootstrap "~> 1.10" --force
 
 `config/config.exs` starts Nerves bootstrap before dependencies are compiled.
 Installing the archive alone does not initialize its Mix integration.
+
+The release VM arguments use the Elixir 1.17+ `start_cli` entry point.
+Keep these arguments literal: Nerves validates `rel/vm.args.eex` before EEx
+evaluation, so conditional legacy startup arguments are not supported here.
 
 Install the JavaScript dependencies once:
 

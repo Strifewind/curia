@@ -5,7 +5,7 @@ defmodule Curia.MixProject do
     [
       app: :curia,
       version: "0.1.0",
-      elixir: "~> 1.14",
+      elixir: "~> 1.17",
       archives: [nerves_bootstrap: "~> 1.10"],
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
