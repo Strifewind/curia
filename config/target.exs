@@ -64,9 +64,7 @@ config :curia,
 
 config :curia, CuriaWeb.Endpoint,
   http: [ip: {0, 0, 0, 0}, port: 4000],
-  server: true,
-  secret_key_base:
-    System.get_env("CURIA_SECRET_KEY_BASE") || Base.encode64(:crypto.strong_rand_bytes(48))
+  server: true
 
 config :nerves_ssh,
   authorized_keys: authorized_keys
