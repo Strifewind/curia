@@ -12,7 +12,8 @@ defmodule Curia.MixProject do
       deps: deps(),
       releases: [
         curia: [
-          include_executables_for: [:unix],
+          overwrite: true,
+          include_erts: &Nerves.Release.erts/0,
           steps: [&Nerves.Release.init/1, :assemble]
         ]
       ]
@@ -49,6 +50,7 @@ defmodule Curia.MixProject do
       {:circuits_gpio, "~> 2.0"},
       {:nerves, "~> 1.10", runtime: false},
       {:nerves_pack, "~> 0.7"},
+      {:shoehorn, "~> 0.9"},
       {:nerves_system_arduino_uno_q, "~> 0.1", runtime: false, targets: :uno_q}
     ]
   end

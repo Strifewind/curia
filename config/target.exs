@@ -1,5 +1,8 @@
 import Config
 
+config :shoehorn, init: [:nerves_runtime, :nerves_pack]
+config :nerves_runtime, startup_guard_enabled: true
+
 wifi_ssid = System.get_env("WIFI_SSID")
 wifi_psk = System.get_env("WIFI_PSK")
 

@@ -29,6 +29,12 @@ The release VM arguments use the Elixir 1.17+ `start_cli` entry point.
 Keep these arguments literal: Nerves validates `rel/vm.args.eex` before EEx
 evaluation, so conditional legacy startup arguments are not supported here.
 
+The firmware release selects the target OTP installation through
+`Nerves.Release.erts/0`. Shoehorn creates the device boot script and starts
+Nerves runtime and networking before the dashboard. Do not bypass firmware
+architecture checks with `.noscrub`: host x86-64 OTP libraries cannot run on
+the UNO Q's AArch64 CPU.
+
 Install the JavaScript dependencies once:
 
 ```sh
