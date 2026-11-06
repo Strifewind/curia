@@ -1,5 +1,8 @@
 import Config
 
+config :shoehorn, init: [:nerves_runtime, :nerves_pack]
+config :nerves_runtime, startup_guard_enabled: true
+
 wifi_ssid = System.get_env("WIFI_SSID")
 wifi_psk = System.get_env("WIFI_PSK")
 
@@ -30,6 +33,14 @@ authorized_keys =
   |> String.split("\n", trim: true)
   |> Enum.map(&String.trim/1)
   |> Enum.reject(&(&1 == ""))
+
+if System.get_env("CURIA_RECOVERY") == "1" do
+  if authorized_keys == [] do
+    raise ArgumentError, "Recovery firmware requires NERVES_SSH_AUTHORIZED_KEYS"
+  end
+
+  config :mdns_lite, hosts: ["curia-recovery"]
+end
 
 service_checks =
   [

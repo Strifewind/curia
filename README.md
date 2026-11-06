@@ -8,9 +8,37 @@ Phoenix LiveView dashboard, and forwards it to the STM32 through
 
 ## Host requirements
 
-- Elixir/OTP and the Nerves firmware tools (including `fwup`)
+- Elixir 1.17 or newer, an OTP version matching the selected Nerves system,
+  and the Nerves firmware tools (including `fwup`)
 - Node.js and npm for the host-side LiveView JavaScript bundle
 - The Nerves UNO Q system's first-install requirements for EDL flashing
+
+Install the Mix build tooling using the same Erlang/Elixir environment that
+will build the firmware:
+
+```sh
+mix local.hex --force
+mix local.rebar --force
+mix archive.install hex nerves_bootstrap "~> 1.10" --force
+```
+
+`config/config.exs` starts Nerves bootstrap before dependencies are compiled.
+Installing the archive alone does not initialize its Mix integration.
+
+The release VM arguments use the Elixir 1.17+ `start_cli` entry point.
+Keep these arguments literal: Nerves validates `rel/vm.args.eex` before EEx
+evaluation, so conditional legacy startup arguments are not supported here.
+The trailing `-extra --no-halt` keeps the VM alive after Elixir CLI startup;
+without it the CLI can exit normally and erlinit can reboot the board.
+`-heart` enables the heartbeat process required by the startup guard, with the
+Nerves defaults of a 30-second heartbeat timeout and a 10-minute initialization
+handshake timeout.
+
+The firmware release selects the target OTP installation through
+`Nerves.Release.erts/0`. Shoehorn creates the device boot script and starts
+Nerves runtime and networking before the dashboard. Do not bypass firmware
+architecture checks with `.noscrub`: host x86-64 OTP libraries cannot run on
+the UNO Q's AArch64 CPU.
 
 Install the JavaScript dependencies once:
 
@@ -105,3 +133,74 @@ UART implementation.
 The application has no database or persistent metrics store. If the network
 or dashboard fails, the MCU firmware remains responsible for its last-known
 physical indication and its own fail-safe behavior.
+
+## Networking-only recovery
+
+If the board repeatedly disconnects and SSH is unavailable, an opt-in recovery
+build can isolate the application from the Nerves system and power supply.
+It starts Nerves networking and SSH without Phoenix, the pollers, or the MCU
+bridge. Recovery builds compile only the boot module in `lib/curia/boot`,
+so excluded web modules do not require Phoenix during compilation. Web and
+polling dependencies are marked `runtime: false` in this mode; Mix still
+derives the OTP application list and retains access to Nerves build tooling.
+This mode does not change the separate STM32 firmware.
+
+Keep the same OTP-29-compatible Elixir, bootstrap archive, `fwup`, and
+`MIX_REBAR3` configuration used for the successful normal build. Set a public
+key that you can log in with:
+
+```sh
+export MIX_TARGET=uno_q
+export MIX_ENV=prod
+export CURIA_RECOVERY=1
+export NERVES_SSH_AUTHORIZED_KEYS="$(cat ~/.ssh/curia_ed25519.pub)"
+mix clean
+mix deps.get
+mix firmware
+```
+
+With the same recovery environment still set, use `mix firmware.qdl` to
+provision the board over EDL again. This erases eMMC data. After successful
+flashing, power off, remove the EDL jumper, and reconnect normally.
+
+On the native host connected to the board, try
+`ssh -i ~/.ssh/curia_ed25519 curia-recovery.local`. This name requires working
+mDNS on the host. Otherwise obtain the board's address from the USB DHCP
+exchange or, if Wi-Fi was configured, the router's DHCP leases. There is no
+web dashboard in recovery mode. In IEx, capture:
+
+```elixir
+System.cmd("cat", ["/proc/uptime"])
+Application.started_applications() |> Enum.map(&elem(&1, 0))
+RingLogger.next()
+```
+
+Check uptime again after a minute. Increasing uptime and a stable USB
+interface indicate that the minimal firmware is staying up. Continued cycling
+does not prove a power fault: a Nerves-system or boot failure is still possible.
+
+To return to normal firmware, unset `CURIA_RECOVERY`, then run `mix clean` and
+`mix firmware`. Cleaning when switching modes ensures the application
+dependency list is regenerated. Upload over the working recovery connection
+using `mix upload DEVICE_IP`.
+
+Before reflashing, record `git rev-parse HEAD` and `mix deps` alongside the
+firmware image. There is currently no committed `mix.lock`, so matching Git
+revisions alone does not ensure matching dependency versions. In particular,
+check the selected UNO Q system version against its
+[upstream changelog](https://github.com/jimsynz/nerves_system_arduino_uno_q/blob/main/CHANGELOG.md).
+System versions through 0.1.2 have a separate ABL boot-slot issue that can leave
+the board in fastboot after several boots; the upstream fix requires
+reprovisioning with `mix firmware.qdl`, not just a firmware upload. This does
+not establish the cause of the repeating USB disconnect/reconnect cycle.
+
+The boot loop remains unresolved, including with recovery firmware. Recovery
+still runs the same kernel, erlinit, system pre-run helpers (including
+`arduino-router`), and Nerves networking/SSH stack. The configured Nerves startup
+guard's validation timeout is 15 minutes, not the observed roughly 48-second USB
+cycle. Missing `--no-halt` and `-heart` have been corrected, but whether these
+caused the observed cycle still needs a reflash to verify. If cycling persists,
+capture the debug UART console from power-on through
+a complete cycle, after verifying the console pinout and adapter voltage.
+USB disconnects and changing gadget MAC addresses alone do not distinguish a
+board reset from USB gadget reinitialization or establish a power fault.

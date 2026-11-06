@@ -31,6 +31,21 @@ defmodule Curia.ApplicationTest do
     end
   end
 
+  test "firmware VM keeps running after Elixir CLI startup and enables the startup guard" do
+    vm_args =
+      Path.expand("../../rel/vm.args.eex", __DIR__)
+      |> EEx.eval_file()
+      |> String.split()
+
+    {erlang_args, ["-extra" | elixir_args]} = Enum.split_while(vm_args, &(&1 != "-extra"))
+    erlang_options = Enum.chunk_every(erlang_args, 3, 1, :discard)
+
+    assert "--no-halt" in elixir_args
+    assert "-heart" in erlang_args
+    assert ["-env", "HEART_INIT_TIMEOUT", "600"] in erlang_options
+    assert ["-env", "HEART_BEAT_TIMEOUT", "30"] in erlang_options
+  end
+
   defp restore_env(app, key, nil), do: Elixir.Application.delete_env(app, key)
   defp restore_env(app, key, value), do: Elixir.Application.put_env(app, key, value)
 end

@@ -5,14 +5,17 @@ defmodule Curia.MixProject do
     [
       app: :curia,
       version: "0.1.0",
-      elixir: "~> 1.14",
+      elixir: "~> 1.17",
       archives: [nerves_bootstrap: "~> 1.10"],
+      elixirc_paths:
+        if(System.get_env("CURIA_RECOVERY") == "1", do: ["lib/curia/boot"], else: ["lib"]),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
       releases: [
         curia: [
-          include_executables_for: [:unix],
+          overwrite: true,
+          include_erts: &Nerves.Release.erts/0,
           steps: [&Nerves.Release.init/1, :assemble]
         ]
       ]
@@ -20,6 +23,10 @@ defmodule Curia.MixProject do
   end
 
   def application do
+    if System.get_env("CURIA_RECOVERY") == "1" and Mix.target() != :uno_q do
+      Mix.raise("CURIA_RECOVERY=1 requires MIX_TARGET=uno_q")
+    end
+
     [
       mod: {Curia.Application, []},
       extra_applications: [:logger, :runtime_tools] ++ target_applications(Mix.target())
@@ -27,7 +34,16 @@ defmodule Curia.MixProject do
   end
 
   defp deps do
-    application_deps() ++ target_deps(Mix.target())
+    application_deps =
+      if System.get_env("CURIA_RECOVERY") == "1" do
+        Enum.map(application_deps(), fn {name, version} ->
+          {name, version, runtime: false}
+        end)
+      else
+        application_deps()
+      end
+
+    application_deps ++ target_deps(Mix.target())
   end
 
   defp application_deps do
@@ -49,6 +65,7 @@ defmodule Curia.MixProject do
       {:circuits_gpio, "~> 2.0"},
       {:nerves, "~> 1.10", runtime: false},
       {:nerves_pack, "~> 0.7"},
+      {:shoehorn, "~> 0.9"},
       {:nerves_system_arduino_uno_q, "~> 0.1", runtime: false, targets: :uno_q},
       {:vintage_net_direct, "~> 0.10.8", targets: :uno_q}
     ]

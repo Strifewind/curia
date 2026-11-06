@@ -1,6 +1,9 @@
 import Config
 
+{:ok, _} = Application.ensure_all_started(:nerves_bootstrap)
+
 config :curia,
+  recovery: System.get_env("CURIA_RECOVERY") == "1",
   target: false,
   poll_interval_ms: 15_000,
   kubernetes_api_url: nil,
