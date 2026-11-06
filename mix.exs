@@ -29,7 +29,7 @@ defmodule Curia.MixProject do
 
     [
       mod: {Curia.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools] ++ target_applications(Mix.target())
     ]
   end
 
@@ -66,11 +66,15 @@ defmodule Curia.MixProject do
       {:nerves, "~> 1.10", runtime: false},
       {:nerves_pack, "~> 0.7"},
       {:shoehorn, "~> 0.9"},
-      {:nerves_system_arduino_uno_q, "~> 0.1", runtime: false, targets: :uno_q}
+      {:nerves_system_arduino_uno_q, "~> 0.1", runtime: false, targets: :uno_q},
+      {:vintage_net_direct, "~> 0.10.8", targets: :uno_q}
     ]
   end
 
   defp target_deps(_host), do: []
+
+  defp target_applications(:uno_q), do: [:vintage_net]
+  defp target_applications(_host), do: []
 
   defp aliases do
     [
