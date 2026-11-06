@@ -14,9 +14,9 @@ defmodule Curia.Application do
         [
           {Phoenix.PubSub, name: Curia.PubSub},
           {Task.Supervisor, name: Curia.PollerTaskSupervisor},
-          Curia.Poller,
           Curia.McuBridge,
-          CuriaWeb.Endpoint
+          CuriaWeb.Endpoint,
+          Curia.Poller
         ]
       end
 

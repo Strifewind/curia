@@ -28,6 +28,11 @@ Installing the archive alone does not initialize its Mix integration.
 The release VM arguments use the Elixir 1.17+ `start_cli` entry point.
 Keep these arguments literal: Nerves validates `rel/vm.args.eex` before EEx
 evaluation, so conditional legacy startup arguments are not supported here.
+The trailing `-extra --no-halt` keeps the VM alive after Elixir CLI startup;
+without it the CLI can exit normally and erlinit can reboot the board.
+`-heart` enables the heartbeat process required by the startup guard, with the
+Nerves defaults of a 30-second heartbeat timeout and a 10-minute initialization
+handshake timeout.
 
 The firmware release selects the target OTP installation through
 `Nerves.Release.erts/0`. Shoehorn creates the device boot script and starts
@@ -178,3 +183,24 @@ To return to normal firmware, unset `CURIA_RECOVERY`, then run `mix clean` and
 `mix firmware`. Cleaning when switching modes ensures the application
 dependency list is regenerated. Upload over the working recovery connection
 using `mix upload DEVICE_IP`.
+
+Before reflashing, record `git rev-parse HEAD` and `mix deps` alongside the
+firmware image. There is currently no committed `mix.lock`, so matching Git
+revisions alone does not ensure matching dependency versions. In particular,
+check the selected UNO Q system version against its
+[upstream changelog](https://github.com/jimsynz/nerves_system_arduino_uno_q/blob/main/CHANGELOG.md).
+System versions through 0.1.2 have a separate ABL boot-slot issue that can leave
+the board in fastboot after several boots; the upstream fix requires
+reprovisioning with `mix firmware.qdl`, not just a firmware upload. This does
+not establish the cause of the repeating USB disconnect/reconnect cycle.
+
+The boot loop remains unresolved, including with recovery firmware. Recovery
+still runs the same kernel, erlinit, system pre-run helpers (including
+`arduino-router`), and Nerves networking/SSH stack. The configured Nerves startup
+guard's validation timeout is 15 minutes, not the observed roughly 48-second USB
+cycle. Missing `--no-halt` and `-heart` have been corrected, but whether these
+caused the observed cycle still needs a reflash to verify. If cycling persists,
+capture the debug UART console from power-on through
+a complete cycle, after verifying the console pinout and adapter voltage.
+USB disconnects and changing gadget MAC addresses alone do not distinguish a
+board reset from USB gadget reinitialization or establish a power fault.
